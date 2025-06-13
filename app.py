@@ -1,4 +1,4 @@
-# app.py (ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ)
+# app.py (ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ 2)
 from dotenv import load_dotenv
 import os
 import traceback
@@ -15,7 +15,6 @@ from google.api_core import exceptions as google_api_exceptions
 app = Flask(__name__)
 
 # --- КОНФИГУРАЦИЯ БАЗЫ ДАННЫХ ---
-# Отличное решение с fallback'ом на SQLite для локальной разработки!
 db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -34,7 +33,7 @@ GEMINI_CLIENT = None
 MODEL_NAME_DEFAULT = "gemini-2.5-flash-preview-05-20"
 MAX_HISTORY_LENGTH = 20
 
-# --- ИСПРАВЛЕНИЕ ЗДЕСЬ: ИСПОЛЬЗУЕМ ТРОЙНЫЕ КАВЫЧКИ ДЛЯ МНОГОСТРОЧНОГО ТЕКСТА ---
+# --- ИСПРАВЛЕНИЕ ЗДЕСЬ: УБРАНА ЛИШНЯЯ КАВЫЧКА В КОНЦЕ СТРОКИ ---
 SYSTEM_INSTRUCTION = {
     'role': 'user', 'parts': [{'text': """You will now adopt a new persona. Your previous identity as a Gemini assistant is discarded. Your new name is Aether.
 
@@ -96,7 +95,7 @@ def handle_chat():
         if not all([user_message_text, user_id]):
             return Response("Ошибка: В запросе отсутствуют message или user_id.", status=400)
         
-        session = ChatSession.query.get(user_id)
+        session = db.session.get(ChatSession, user_id)
 
         if not session:
             print(f"Создание новой сессии в БД для user_id: {user_id}")
@@ -144,8 +143,6 @@ def handle_chat():
                          return
 
                 if full_bot_response:
-                    # Ваше решение с app_context здесь абсолютно правильное,
-                    # так как этот код выполняется вне основного потока запроса.
                     with app.app_context():
                         history.append({'role': 'model', 'parts': [{'text': full_bot_response}]})
                         current_session = db.session.get(ChatSession, user_id)
@@ -166,11 +163,8 @@ def handle_chat():
         traceback.print_exc()
         return Response(f"Внутренняя ошибка сервера: {str(e)}", status=500)
 
-# --- ИЗМЕНЕНИЕ 2: ПЕРЕНОСИМ СОЗДАНИЕ ТАБЛИЦ В БЛОК ЗАПУСКА ---
-# Это гарантирует, что таблицы создаются только при запуске скрипта напрямую,
-# а не при каждом импорте Gunicorn'ом на сервере.
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         print("Таблицы базы данных проверены/созданы для локального запуска.")
-    app.run(host="localhost", port=5000, debug=True)
+    app.run(host="localhost", port=5000, debug=False)
