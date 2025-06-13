@@ -1,34 +1,34 @@
-# app.py (версия с поддержкой PostgreSQL)
+# app.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 from dotenv import load_dotenv
 import os
 import traceback
 import json
 
-# Загружаем переменные окружения из .env файла
 load_dotenv()
 
 from flask import Flask, render_template, request, Response
 from flask_sqlalchemy import SQLAlchemy
-
-# --- ПРАВИЛЬНЫЙ ИМПОРТ ИЗ ПАКЕТА google-genai ---
 from google import genai
 from google.genai import types
 from google.api_core import exceptions as google_api_exceptions
 
 app = Flask(__name__)
 
-# --- НОВАЯ СЕКЦИЯ: КОНФИГУРАЦИЯ БАЗЫ ДАННЫХ ---
-# Render.com предоставляет URL базы данных в переменной окружения DATABASE_URL
-# SQLAlchemy требует, чтобы URL начинался с 'postgresql://', а не 'postgres://'
+# --- КОНФИГУРАЦИЯ БАЗЫ ДАННЫХ ---
 db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Отключаем ненужные уведомления
-db = SQLAlchemy(app)
-# --- КОНЕЦ СЕКЦИИ КОНФИГУРАЦИИ БД ---
+# Если DATABASE_URL не найден (например, при локальном запуске без .env),
+# можно использовать временную SQLite базу, чтобы приложение не падало.
+if not db_url:
+    print("ПРЕДУПРЕЖДЕНИЕ: DATABASE_URL не найден. Используется временная база SQLite.")
+    db_url = "sqlite:///temp_chat.db"
 
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
 # --- КОНФИГУРАЦИЯ GEMINI ---
 API_KEY_CONFIGURED = False
@@ -36,26 +36,28 @@ GEMINI_CLIENT = None
 MODEL_NAME_DEFAULT = "gemini-2.5-flash-preview-05-20"
 MAX_HISTORY_LENGTH = 20
 
-# Системная инструкция (без изменений)
 SYSTEM_INSTRUCTION = {
-    'role': 'user', 'parts': [{'text': "You will now adopt a new persona..."}] # Сокращено для краткости
+    'role': 'user', 'parts': [{'text': "You will now adopt a new persona..."}]
 }
 SYSTEM_RESPONSE = {
     'role': 'model', 'parts': [{'text': "Эфир активен. Ожидаю приказа."}]
 }
 
-# --- НОВАЯ СЕКЦИЯ: МОДЕЛЬ ДАННЫХ ДЛЯ ИСТОРИИ ЧАТА ---
+# --- МОДЕЛЬ ДАННЫХ ДЛЯ ИСТОРИИ ЧАТА ---
 class ChatSession(db.Model):
     __tablename__ = 'chat_sessions'
     user_id = db.Column(db.String(100), primary_key=True)
-    # Используем тип JSON для хранения всей истории в виде одного объекта
     history = db.Column(db.JSON, nullable=False)
 
     def __repr__(self):
         return f'<ChatSession for {self.user_id}>'
 
-# --- КОНЕЦ СЕКЦИИ МОДЕЛИ ДАННЫХ ---
-
+# --- ИЗМЕНЕНИЕ ЗДЕСЬ! ---
+# Создаем таблицы до первого запроса. Этот код теперь выполнится при запуске gunicorn.
+with app.app_context():
+    db.create_all()
+    print("Таблицы базы данных проверены/созданы.")
+# --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
 # Инициализация Gemini
 try:
@@ -77,6 +79,7 @@ def index():
 
 @app.route("/chat", methods=["POST"])
 def handle_chat():
+    # ... весь остальной код handle_chat остается БЕЗ ИЗМЕНЕНИЙ ...
     if not API_KEY_CONFIGURED or not GEMINI_CLIENT:
         return Response("Ошибка: Чат-сервис не сконфигурирован.", status=503)
 
@@ -87,35 +90,27 @@ def handle_chat():
 
         if not all([user_message_text, user_id]):
             return Response("Ошибка: В запросе отсутствуют message или user_id.", status=400)
-
-        # --- ИЗМЕНЕННЫЙ БЛОК: РАБОТА С ИСТОРИЕЙ ИЗ БД ---
+        
         session = ChatSession.query.get(user_id)
 
         if not session:
             print(f"Создание новой сессии в БД для user_id: {user_id}")
-            # Если сессии нет, создаем ее с системными инструкциями
             initial_history = [SYSTEM_INSTRUCTION, SYSTEM_RESPONSE]
             new_session = ChatSession(user_id=user_id, history=initial_history)
             db.session.add(new_session)
-            # Немедленно сохраняем, чтобы избежать гонки состояний
             db.session.commit()
             history = initial_history
         else:
-            # Если сессия есть, загружаем историю из нее
             history = session.history
 
-        # Добавляем сообщение пользователя в историю
         history.append({'role': 'user', 'parts': [{'text': user_message_text}]})
 
-        # Обрезка истории, если она стала слишком длинной
         if len(history) > MAX_HISTORY_LENGTH:
             history = [SYSTEM_INSTRUCTION, SYSTEM_RESPONSE] + history[-MAX_HISTORY_LENGTH+2:]
             print(f"История для '{user_id}' обрезана.")
 
         print(f"Длина истории для '{user_id}': {len(history)} сообщений.")
-        # --- КОНЕЦ ИЗМЕНЕННОГО БЛОКА ---
-
-        # Конфигурация генерации (без изменений)
+        
         tools_config = [types.Tool(google_search=types.GoogleSearch())]
         generate_config = types.GenerateContentConfig(
             tools=tools_config,
@@ -143,17 +138,12 @@ def handle_chat():
                          yield error_msg
                          return
 
-                # --- ИЗМЕНЕННЫЙ БЛОК: СОХРАНЕНИЕ ИСТОРИИ В БД ---
                 if full_bot_response:
-                    # Добавляем ответ бота в историю
                     history.append({'role': 'model', 'parts': [{'text': full_bot_response}]})
-                    # Находим сессию еще раз (на случай если что-то изменилось)
-                    # и обновляем в ней поле history
                     current_session = ChatSession.query.get(user_id)
                     current_session.history = history
-                    db.session.commit() # Сохраняем изменения в базе данных
+                    db.session.commit()
                     print(f"История для '{user_id}' успешно сохранена в БД.")
-                # --- КОНЕЦ ИЗМЕНЕННОГО БЛОКА ---
 
             except Exception as e:
                 print(f"!!! Ошибка во время стриминга для '{user_id}': {e}")
@@ -168,13 +158,6 @@ def handle_chat():
         return Response(f"Внутренняя ошибка сервера: {str(e)}", status=500)
 
 
+# Этот блок теперь используется только для локального запуска
 if __name__ == "__main__":
-    # Эта команда создает таблицы в БД, если их еще нет.
-    # Она должна быть выполнена один раз при старте приложения.
-    with app.app_context():
-        db.create_all()
-        print("Таблицы базы данных проверены/созданы.")
-    
-    # Для локального тестирования вам понадобится локальный сервер PostgreSQL.
-    # Для развертывания на Render этот код будет работать "из коробки".
     app.run(host="localhost", port=5000, debug=True)
