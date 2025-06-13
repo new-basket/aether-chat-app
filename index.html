@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <!-- Все ваши теги <head> остаются без изменений -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Эфир Чат-бот (Streaming)</title>
+    <meta name="color-scheme" content="light dark">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>
+        /* Все ваши стили <style> остаются без изменений */
+        :root {
+            --primary-color: #8ab4f8;
+            --background-color: #1e1e1e;
+            --message-user-bg: #2d2d2d;
+            --message-bot-bg: #252525;
+            --text-color: #e0e0e0;
+            --border-radius: 12px;
+            --input-bg: #2d2d2d;
+            --input-text: #e0e0e0;
+            --border-color: #444;
+            --code-bg: #1a1a1a;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --primary-color: #4285f4;
+                --background-color: #f5f5f5;
+                --message-user-bg: #e3f2fd;
+                --message-bot-bg: #ffffff;
+                --text-color: #333333;
+                --input-bg: #ffffff;
+                --input-text: #333333;
+                --border-color: #ddd;
+                --code-bg: #f0f0f0;
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            line-height: 1.6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            max-width: 1200px; margin: 0 auto; padding: 20px;
+            flex: 1; display: flex; flex-direction: column; height: 100%;
+        }
+        header {
+            text-align: center; margin-bottom: 20px; padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        h1 { color: var(--primary-color); margin-bottom: 10px; }
+        .model-selector { margin: 15px 0; }
+        .chat-container {
+            flex: 1; display: flex; flex-direction: column;
+            background-color: var(--message-bot-bg);
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            overflow: hidden; border: 1px solid var(--border-color);
+        }
+        .chat-messages {
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .message {
+            max-width: 85%; padding: 12px 16px; border-radius: 18px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .user-message {
+            align-self: flex-end; background-color: var(--message-user-bg);
+            border-bottom-right-radius: 4px; color: #8ab4f8;
+        }
+        .bot-message {
+            align-self: flex-start; background-color: var(--message-bot-bg);
+            border: 1px solid var(--border-color); border-bottom-left-radius: 4px;
+        }
+        .message-sender { font-weight: 500; margin-bottom: 4px; font-size: 0.85em; color: #5f6368;}
+        .message-time { font-size: 0.7em; color: #9e9e9e; text-align: right; margin-top: 5px; }
+        .input-area {
+            display: flex; padding: 15px;
+            background-color: var(--message-bot-bg); border-top: 1px solid var(--border-color);
+        }
+        #user-input {
+            flex: 1; padding: 12px 15px; border: 1px solid var(--border-color);
+            background-color: var(--input-bg); color: var(--input-text);
+            border-radius: 24px; font-size: 16px; outline: none; transition: all 0.3s;
+        }
+        #user-input:focus { border-color: var(--primary-color); box-shadow: 0 1px 6px rgba(138, 180, 248, 0.3); }
+        #send-button {
+            background-color: var(--primary-color); color: white; border: none;
+            border-radius: 50%; width: 48px; height: 48px; margin-left: 10px;
+            cursor: pointer; transition: background-color 0.3s; display: flex;
+            align-items: center; justify-content: center;
+        }
+        #send-button:hover { background-color: #a8c7fa; }
+        #send-button:disabled { background-color: #666; cursor: not-allowed; }
+        .model-badge {
+            font-size: 0.7em; background-color: #e8f0fe; color: var(--primary-color);
+            padding: 2px 8px; border-radius: 10px; display: inline-block;
+        }
+        .message-text pre {
+            background-color: var(--code-bg); padding: 12px; border-radius: 8px;
+            overflow-x: auto; margin: 10px 0; border: 1px solid var(--border-color);
+        }
+        .message-text code { font-family: 'Courier New', Courier, monospace; font-size: 0.9em; }
+        .message-text p { margin-bottom: 0.5em; }
+        .message-text ul, .message-text ol { margin-left: 20px; margin-bottom: 0.5em; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2d2d2d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
+        /* Добавим курсор для индикации печати */
+        .bot-message .message-text:empty::after {
+            content: "▋";
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            from, to { color: transparent; }
+            50% { color: var(--text-color); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Эфир Чат-бот</h1>
+            <p>Общайтесь с Эфир на абсолютно любые темы</p>
+            <div class="model-selector">
+                <span>Модель: <span class="model-badge">2.5 Flash</span></span>
+            </div>
+        </header>
+        
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message bot-message">
+                    <div class="message-sender">Эфир <span class="model-badge">2.5 Flash</span></div>
+                    <div class="message-text">Привет! Я Эфир на базе Gemini. Я могу предоставить абсолютно любую информацию.</div>
+                    <div class="message-time" id="welcome-time"></div>
+                </div>
+            </div>
+            
+            <div class="input-area">
+                <input type="text" id="user-input" placeholder="Введите ваше сообщение..." autocomplete="off">
+                <button id="send-button" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Библиотеки для Markdown и подсветки кода -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <!-- ЗАМЕНИТЕ ВАШ СТАРЫЙ SCRIPT НА ЭТОТ -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            
+            document.getElementById('welcome-time').textContent = getCurrentTime();
+            const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            
+            // --- НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ ЭФФЕКТА ПЕЧАТИ ---
+            const TYPEWRITER_SPEED = 5; // мс на символ. Чем меньше, тем быстрее.
+            let chunkQueue = [];
+            let isProcessingQueue = false;
+            let currentBotMessageElement = null;
+            let fullBotResponse = '';
+            let typewriterInterval;
+
+            userInput.addEventListener('input', () => { sendButton.disabled = !userInput.value.trim(); });
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!sendButton.disabled) sendMessage();
+                }
+            });
+
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (!message) return;
+                
+                addMessage('user', message);
+                userInput.value = '';
+                sendButton.disabled = true;
+
+                // Подготавливаем контейнер для ответа бота
+                currentBotMessageElement = createBotMessageElement();
+                fullBotResponse = ''; // Сбрасываем текст предыдущего ответа
+                
+                fetch('/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ message: message, user_id: userId })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                         return response.json().then(err => { throw new Error(err.error || 'Ошибка сети') });
+                    }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    function readStream() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                // Поток завершен, можно остановить обработку
+                                return;
+                            }
+                            const chunk = decoder.decode(value, { stream: true });
+                            // Добавляем полученный кусок в очередь
+                            chunkQueue.push(chunk);
+                            // Запускаем обработчик очереди, если он еще не запущен
+                            if (!isProcessingQueue) {
+                                processQueue();
+                            }
+                            
+                            readStream(); // Читаем следующий кусок
+                        });
+                    }
+                    readStream();
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                    addMessage('bot', `Извините, произошла ошибка: ${error.message}`);
+                });
+            }
+            
+            // --- НОВАЯ ФУНКЦИЯ ДЛЯ ОБРАБОТКИ ОЧЕРЕДИ ---
+            function processQueue() {
+                isProcessingQueue = true;
+                
+                typewriterInterval = setInterval(() => {
+                    if (chunkQueue.length === 0) {
+                        // Очередь пуста, останавливаем интервал
+                        clearInterval(typewriterInterval);
+                        isProcessingQueue = false;
+                        // Финальная подсветка кода, если он есть
+                        currentBotMessageElement.querySelectorAll('pre code').forEach(hljs.highlightElement);
+                        return;
+                    }
+
+                    // Берем первый символ из первого чанка в очереди
+                    let char = chunkQueue[0].charAt(0);
+                    chunkQueue[0] = chunkQueue[0].substring(1);
+
+                    // Добавляем символ к полному ответу
+                    fullBotResponse += char;
+                    
+                    // Рендерим весь текст заново с помощью Markdown
+                    // Это важно, чтобы форматирование (жирный, списки, код) не ломалось
+                    currentBotMessageElement.querySelector('.message-text').innerHTML = formatMessageText(fullBotResponse);
+
+                    scrollToBottom();
+                    
+                    // Если чанк закончился, удаляем его из очереди
+                    if (chunkQueue[0].length === 0) {
+                        chunkQueue.shift();
+                    }
+
+                }, TYPEWRITER_SPEED);
+            }
+
+            function addMessage(sender, text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                
+                const senderHTML = sender === 'bot' 
+                    ? `<div class="message-sender">Эфир <span class="model-badge">2.5 Flash</span></div>`
+                    : '<div class="message-sender">Вы</div>';
+                
+                messageDiv.innerHTML = `
+                    ${senderHTML}
+                    <div class="message-text">${formatMessageText(text)}</div>
+                    <div class="message-time">${getCurrentTime()}</div>`;
+                
+                chatMessages.appendChild(messageDiv);
+                // Подсветка синтаксиса для сообщений, которые добавляются целиком (ошибки, юзер)
+                messageDiv.querySelectorAll('pre code').forEach(hljs.highlightElement);
+                scrollToBottom();
+            }
+
+            function createBotMessageElement() {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message bot-message';
+                messageDiv.innerHTML = `
+                    <div class="message-sender">Эфир <span class="model-badge">2.5 Flash</span></div>
+                    <div class="message-text"></div>
+                    <div class="message-time">${getCurrentTime()}</div>`;
+                chatMessages.appendChild(messageDiv);
+                scrollToBottom();
+                return messageDiv;
+            }
+            
+            function formatMessageText(text) {
+                // Используем marked.js для преобразования Markdown в HTML
+                return marked.parse(text, { breaks: true, gfm: true });
+            }
+            
+            function scrollToBottom() {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function getCurrentTime() {
+                const now = new Date();
+                return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            }
+            
+            userInput.focus();
+        });
+    </script>
+</body>
+</html>
