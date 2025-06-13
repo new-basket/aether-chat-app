@@ -1,0 +1,17 @@
+# requirements.txt
+
+# Основной фреймворк
+Flask
+
+# Для работы с базой данных PostgreSQL
+Flask-SQLAlchemy
+psycopg2-binary
+
+# Для работы с Google Gemini API
+google-genai
+
+# Для загрузки переменных окружения из .env файла (полезно для локальной разработки)
+python-dotenv
+
+# WSGI сервер для запуска приложения на хостинге (стандарт для Render)
+gunicorn
