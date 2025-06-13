@@ -1,4 +1,4 @@
-# requirements.txt - Очищенная версия для aether-chat-app
+# requirements.txt - Версия с явным указанием зависимостей
 
 # Основной фреймворк
 Flask
@@ -7,12 +7,12 @@ Flask
 Flask-SQLAlchemy
 psycopg2-binary
 
-# Для работы с Google Gemini API
+# Для работы с Google Gemini API и его компонентами
 google-genai
+google-api-core  # <--- ДОБАВЬТЕ ЭТУ СТРОКУ
 
 # WSGI сервер для запуска приложения на хостинге
 gunicorn
 
-# (Опционально, но полезно для локальной разработки)
-# Для загрузки переменных окружения из .env файла
+# (Опционально) для загрузки .env файла
 python-dotenv
