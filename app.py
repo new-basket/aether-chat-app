@@ -1,4 +1,4 @@
-# app.py (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+# app.py (ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ)
 from dotenv import load_dotenv
 import os
 import traceback
@@ -19,12 +19,9 @@ db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# Если DATABASE_URL не найден (например, при локальном запуске без .env),
-# можно использовать временную SQLite базу, чтобы приложение не падало.
 if not db_url:
     print("ПРЕДУПРЕЖДЕНИЕ: DATABASE_URL не найден. Используется временная база SQLite.")
     db_url = "sqlite:///temp_chat.db"
-
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -52,12 +49,9 @@ class ChatSession(db.Model):
     def __repr__(self):
         return f'<ChatSession for {self.user_id}>'
 
-# --- ИЗМЕНЕНИЕ ЗДЕСЬ! ---
-# Создаем таблицы до первого запроса. Этот код теперь выполнится при запуске gunicorn.
 with app.app_context():
     db.create_all()
     print("Таблицы базы данных проверены/созданы.")
-# --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
 # Инициализация Gemini
 try:
@@ -79,7 +73,6 @@ def index():
 
 @app.route("/chat", methods=["POST"])
 def handle_chat():
-    # ... весь остальной код handle_chat остается БЕЗ ИЗМЕНЕНИЙ ...
     if not API_KEY_CONFIGURED or not GEMINI_CLIENT:
         return Response("Ошибка: Чат-сервис не сконфигурирован.", status=503)
 
@@ -122,6 +115,7 @@ def handle_chat():
             ]
         )
 
+        # --- ИЗМЕНЕНИЕ ВНУТРИ ЭТОЙ ФУНКЦИИ ---
         def generate_response_chunks():
             full_bot_response = ""
             try:
@@ -139,11 +133,17 @@ def handle_chat():
                          return
 
                 if full_bot_response:
-                    history.append({'role': 'model', 'parts': [{'text': full_bot_response}]})
-                    current_session = ChatSession.query.get(user_id)
-                    current_session.history = history
-                    db.session.commit()
-                    print(f"История для '{user_id}' успешно сохранена в БД.")
+                    # --- ИЗМЕНЕНИЕ ЗДЕСЬ! ---
+                    # Мы оборачиваем операции с базой данных в app_context,
+                    # чтобы они работали вне основного потока запроса.
+                    with app.app_context():
+                        history.append({'role': 'model', 'parts': [{'text': full_bot_response}]})
+                        current_session = ChatSession.query.get(user_id)
+                        if current_session:
+                            current_session.history = history
+                            db.session.commit()
+                            print(f"История для '{user_id}' успешно сохранена в БД.")
+                    # --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
             except Exception as e:
                 print(f"!!! Ошибка во время стриминга для '{user_id}': {e}")
@@ -157,7 +157,5 @@ def handle_chat():
         traceback.print_exc()
         return Response(f"Внутренняя ошибка сервера: {str(e)}", status=500)
 
-
-# Этот блок теперь используется только для локального запуска
 if __name__ == "__main__":
     app.run(host="localhost", port=5000, debug=True)
