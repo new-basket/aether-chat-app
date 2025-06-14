@@ -68,7 +68,7 @@
     GOOGLE_API_KEY="ВАШ_API_КЛЮЧ_GEMINI"
     # Опционально: DATABASE_URL="sqlite:///temp_chat.db" (или ваш URL PostgreSQL)
     ```
-    (Получить API-ключ можно здесь: [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+    (Получить API-ключ можно здесь: [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey))
 5.  **Запустите приложение Flask:**
     ```bash
     python app.py
