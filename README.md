@@ -80,4 +80,4 @@
 Приветствуются любые вклады, предложения и улучшения\! Если у вас есть идеи, пожалуйста, открывайте issues или отправляйте pull requests. Давайте сделаем Эфир ещё лучше\! ✨
 
 -----
-[<img src="https://i.ibb.co/B5DVXbXX/photo-2025-06-06-21-51-04.jpg" alt="photo-2025-06-06-21-51-04" border="0">](https://i.ibb.co/B5DVXbXX/photo-2025-06-06-21-51-04.jpg)
+  [<img src="https://i.ibb.co/B5DVXbXX/photo-2025-06-06-21-51-04.jpg" alt="photo-2025-06-06-21-51-04" border="0">](https://i.ibb.co/B5DVXbXX/photo-2025-06-06-21-51-04.jpg)
