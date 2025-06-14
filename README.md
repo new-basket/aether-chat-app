@@ -81,3 +81,4 @@
 
 -----
   [<img src="https://i.ibb.co/B5DVXbXX/photo-2025-06-06-21-51-04.jpg" alt="photo-2025-06-06-21-51-04" border="0">](https://i.ibb.co/B5DVXbXX/photo-2025-06-06-21-51-04.jpg)
+  [url=https://ibb.co/rRPGCYCC][img]https://i.ibb.co/rRPGCYCC/photo-2025-06-06-21-51-04.jpg[/img][/url]
