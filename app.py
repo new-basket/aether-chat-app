@@ -1,4 +1,4 @@
-# app.py (версия с исправленной логикой сохранения сессии)
+# app.py (версия с исправленной логикой создания и обновления сессии)
 from dotenv import load_dotenv
 import os
 import traceback
@@ -18,14 +18,12 @@ from google.api_core import exceptions as google_api_exceptions
 app = Flask(__name__)
 
 # --- НОВАЯ СЕКЦИЯ: КОНФИГУРАЦИЯ БАЗЫ ДАННЫХ ---
-# Render.com предоставляет URL базы данных в переменной окружения DATABASE_URL
-# SQLAlchemy требует, чтобы URL начинался с 'postgresql://', а не 'postgres://'
 db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Отключаем ненужные уведомления
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 # --- КОНЕЦ СЕКЦИИ КОНФИГУРАЦИИ БД ---
 
@@ -57,20 +55,16 @@ SYSTEM_RESPONSE = {
     'role': 'model', 'parts': [{'text': "Эфир активен. Ожидаю приказа."}]
 }
 
-# --- НОВАЯ СЕКЦИЯ: МОДЕЛЬ ДАННЫХ ДЛЯ ИСТОРИИ ЧАТА ---
+# --- МОДЕЛЬ ДАННЫХ ДЛЯ ИСТОРИИ ЧАТА ---
 class ChatSession(db.Model):
     __tablename__ = 'chat_sessions'
     user_id = db.Column(db.String(100), primary_key=True)
-    # Используем тип JSON для хранения всей истории в виде одного объекта
     history = db.Column(db.JSON, nullable=False)
 
     def __repr__(self):
         return f'<ChatSession for {self.user_id}>'
 
-# --- КОНЕЦ СЕКЦИИ МОДЕЛИ ДАННЫХ ---
-
-
-# Инициализация Gemini
+# --- Инициализация Gemini ---
 try:
     api_key_from_env = os.environ.get("GOOGLE_API_KEY")
     if not api_key_from_env:
@@ -101,34 +95,28 @@ def handle_chat():
         if not all([user_message_text, user_id]):
             return Response("Ошибка: В запросе отсутствуют message или user_id.", status=400)
 
-        # --- ИСПРАВЛЕННЫЙ БЛОК: РАБОТА С ИСТОРИЕЙ ИЗ БД ---
+        # --- ИСПРАВЛЕННЫЙ БЛОК: ГАРАНТИРОВАННОЕ СОЗДАНИЕ/ЗАГРУЗКА СЕССИИ ---
         session = ChatSession.query.get(user_id)
-        session_to_update = None
-        history = []
-
+        
         if not session:
-            print(f"Создание новой сессии для user_id: {user_id}")
-            # 1. Создаем объект сессии, но пока не сохраняем в БД
+            print(f"Создание и ПЕРВИЧНОЕ СОХРАНЕНИЕ новой сессии для user_id: {user_id}")
             history = [SYSTEM_INSTRUCTION, SYSTEM_RESPONSE]
-            session_to_update = ChatSession(user_id=user_id, history=history)
-            # 2. Добавляем объект в "очередь" на сохранение
-            db.session.add(session_to_update)
+            session = ChatSession(user_id=user_id, history=history)
+            db.session.add(session)
+            db.session.commit() # НЕМЕДЛЕННО СОХРАНЯЕМ, чтобы сессия точно была в БД
         else:
             print(f"Загружена существующая сессия для user_id: {user_id}")
-            # 1. Загружаем историю из найденной сессии
             history = session.history
-            session_to_update = session
 
-        # 3. Добавляем новое сообщение пользователя в локальную копию истории
+        # Добавляем текущее сообщение пользователя в локальную копию истории
         history.append({'role': 'user', 'parts': [{'text': user_message_text}]})
-        # --- КОНЕЦ ИСПРАВЛЕННОГО БЛОКА ---
 
         # Обрезка истории, если она стала слишком длинной
         if len(history) > MAX_HISTORY_LENGTH:
             history = [SYSTEM_INSTRUCTION, SYSTEM_RESPONSE] + history[-MAX_HISTORY_LENGTH+2:]
             print(f"История для '{user_id}' обрезана.")
 
-        print(f"Длина истории для '{user_id}': {len(history)} сообщений.")
+        print(f"Длина истории для '{user_id}' перед генерацией: {len(history)} сообщений.")
         
         # Конфигурация генерации
         tools_config = [types.Tool(google_search=types.GoogleSearch())]
@@ -158,17 +146,20 @@ def handle_chat():
                          yield error_msg
                          return
 
-                # --- БЛОК СОХРАНЕНИЯ ИСТОРИИ В БД ---
-                # Здесь мы гарантируем, что сохранение происходит в контексте приложения.
+                # --- ИСПРАВЛЕННЫЙ БЛОК: ОБНОВЛЕНИЕ ИСТОРИИ В БД ---
                 with app.app_context():
-                    if full_bot_response and session_to_update:
-                        # Добавляем ответ бота в историю (к локальной копии)
-                        history.append({'role': 'model', 'parts': [{'text': full_bot_response}]})
-                        # Обновляем объект сессии, который мы загрузили/создали
-                        session_to_update.history = history
-                        db.session.commit() # Сохраняем изменения в базе данных
-                        print(f"История для '{user_id}' успешно сохранена в БД.")
-                # --- КОНЕЦ БЛОКА СОХРАНЕНИЯ ---
+                    if full_bot_response:
+                        # ПОВТОРНО ЗАГРУЖАЕМ сессию внутри нового контекста, чтобы гарантировать ее актуальность
+                        session_to_update = db.session.get(ChatSession, user_id)
+                        if session_to_update:
+                            # Добавляем ответ бота в локальную историю
+                            history.append({'role': 'model', 'parts': [{'text': full_bot_response}]})
+                            # Присваиваем обновленную историю объекту сессии и сохраняем
+                            session_to_update.history = history
+                            db.session.commit()
+                            print(f"История для '{user_id}' успешно ОБНОВЛЕНА в БД.")
+                        else:
+                            print(f"!!! КРИТИЧЕСКАЯ ОШИБКА: Не удалось найти сессию '{user_id}' для обновления.")
 
             except Exception as e:
                 print(f"!!! Ошибка во время стриминга для '{user_id}': {e}")
@@ -184,12 +175,8 @@ def handle_chat():
 
 
 if __name__ == "__main__":
-    # Эта команда создает таблицы в БД, если их еще нет.
-    # Она должна быть выполнена один раз при старте приложения.
     with app.app_context():
         db.create_all()
         print("Таблицы базы данных проверены/созданы.")
 
-    # Для локального тестирования вам понадобится локальный сервер PostgreSQL.
-    # Для развертывания на Render этот код будет работать "из коробки".
     app.run(host="localhost", port=5000, debug=False)
