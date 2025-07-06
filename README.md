@@ -1,84 +1,104 @@
-## 🚀 Aether Chat App - Готов к Деплою на Render.com\!
+# Aether Chat App 🌌💬
 
-Добро пожаловать в **Aether Chat App** – интерактивное веб-приложение для чата, созданное на базе мощной языковой модели Google Gemini\! 🤖 Этот проект идеально подходит для быстрого развертывания в облаке, используя Flask для бэкенда и чистого HTML/CSS/JS для динамичного пользовательского интерфейса. Он разработан с учетом специфики хостинга на **Render.com**, что делает его деплой простым и быстрым\! 🎉
+![Aether Chat App](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
+![Flask](https://img.shields.io/badge/flask-2.0%2B-blue.svg)
 
-### ✨ Особенности:
+Welcome to the **Aether Chat App**! This web chat application, built with Python and Flask, integrates the Gemini AI for a seamless chatting experience. It features real-time streaming and saves chat history, making it a powerful tool for communication.
 
-  * **Мгновенный Стриминг Ответов:** Получайте ответы от ИИ в реальном времени, слово за словом, благодаря технологии стриминга. Больше никаких долгих ожиданий\! ⚡️
-  * **Оптимизирован для Render.com:** Включает `Procfile` и `gunicorn` в `requirements.txt`, что обеспечивает бесшовное развертывание и масштабирование на платформе Render.com. Просто подключи репозиторий и деплой\!
-  * **Динамический UI:** Современный и адаптивный дизайн, который автоматически подстраивается под светлую или темную тему вашей системы. 🌓
-  * **Поддержка Markdown и Подсветка Кода:** ИИ может форматировать свои ответы с помощью Markdown, включая блоки кода с синтаксической подсветкой для удобства чтения. ✍️
-  * **Сохранение Истории Чата:** Ваша беседа с ИИ сохраняется в базе данных (поддержка PostgreSQL для Render.com и SQLite для локальной разработки), позволяя продолжить диалог, не теряя контекста. 💾
-  * **Настраиваемая Модель ИИ:** Легко взаимодействует с моделями Google Gemini (текущая по умолчанию - `gemini-2.5-flash-preview-05-20`).
+## Table of Contents
 
-### 🛠️ Технологии:
+1. [Features](#features)
+2. [Technologies Used](#technologies-used)
+3. [Installation](#installation)
+4. [Usage](#usage)
+5. [Contributing](#contributing)
+6. [License](#license)
+7. [Contact](#contact)
+8. [Releases](#releases)
 
-  * **Frontend:**
-      * **HTML5:** Структура веб-страницы. 
-      * **CSS3:** Стилизация и адаптивность, включая переменные CSS для легкой смены тем. 
-      * **JavaScript (Vanilla JS):** Динамическое поведение, взаимодействие с API, эффект печати. 
-      * **Marked.js:** Для рендеринга Markdown в HTML. 
-      * **Highlight.js:** Для синтаксической подсветки блоков кода. 
-  * **Backend:**
-      * **Python 3:** Основной язык бэкенда.
-      * **Flask:** Легковесный веб-фреймворк для обработки запросов и маршрутизации.
-      * **Google Gemini API (через `google-genai`):** Для взаимодействия с языковыми моделями Google.
-      * **Flask-SQLAlchemy:** ORM для работы с базами данных.
-      * **python-dotenv:** Для безопасной загрузки переменных окружения (например, API ключа и URL базы данных).
-      * **gunicorn:** WSGI HTTP-сервер для продакшн-развертывания.
-  * **База данных:**
-      * **PostgreSQL:** Рекомендуемая база данных для продакшн-развертывания на Render.com.
-      * **SQLite:** Используется по умолчанию для локальной разработки, если `DATABASE_URL` не указан.
+## Features 🌟
 
-### ⚙️ Деплой на Render.com:
+- **AI Integration**: Utilize the Gemini AI for intelligent responses.
+- **Real-Time Streaming**: Experience instant messaging without delays.
+- **Chat History**: Automatically save your conversations for future reference.
+- **User-Friendly Interface**: Navigate easily through a clean and simple design.
+- **Responsive Design**: Works well on both desktop and mobile devices.
 
-1.  **Форкните или склонируйте этот репозиторий** в свой аккаунт GitHub.
-2.  **Перейдите на Render.com** и создайте новый "Web Service".
-3.  **Подключите свой GitHub репозиторий.**
-4.  **Настройте переменные окружения** на Render.com:
-      * `GOOGLE_API_KEY`: Ваш API-ключ Google Gemini. (Обязательно\!)
-      * `DATABASE_URL`: URL вашей PostgreSQL базы данных (если вы используете её). Render.com может автоматически создать для вас PostgreSQL базу данных.
-5.  Render.com автоматически обнаружит `Procfile` и `requirements.txt` и развернет ваше приложение\!
-6.  **Убедитесь, что в Build Command и Start Command указаны правильные команды** (обычно `pip install -r requirements.txt` и `gunicorn app:app`).
-7.  **После успешного деплоя, Render.com предоставит вам публичную ссылку** на ваше приложение, например: `https://abcd-dasd-m4qa.onrender.com/`. Перейдите по этой ссылке, чтобы взаимодействовать с вашим чат-ботом\! ✨
+## Technologies Used 🛠️
 
-### 💻 Локальная Установка и Запуск (для Разработки):
+- **Python**: The core programming language.
+- **Flask**: The web framework for building the application.
+- **Gemini AI**: For enhanced chat functionalities.
+- **HTML/CSS/JavaScript**: For front-end development.
+- **WebSockets**: For real-time communication.
+- **SQLite**: For storing chat history.
 
-Если вы хотите запустить проект локально для разработки или тестирования:
+## Installation 🛠️
 
-1.  **Клонируйте репозиторий:**
-    ```bash
-    git clone https://github.com/Shwepsik2121-ai/aether-chat-app.git
-    cd aether-chat-app
-    ```
-2.  **Создайте и активируйте виртуальное окружение:**
-    ```bash
-    python -m venv venv
-    # Для Windows:
-    .\venv\Scripts\activate
-    # Для macOS/Linux:
-    source venv/bin/activate
-    ```
-3.  **Установите зависимости:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  **Создайте файл `.env`** в корневой директории проекта и добавьте ваш API-ключ Google Gemini:
-    ```
-    GOOGLE_API_KEY="ВАШ_API_КЛЮЧ_GEMINI"
-    DATABASE_URL="sqlite:///temp_chat.db" (или ваш URL PostgreSQL)
-    ```
-    (Получить API-ключ можно здесь: [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey))
-5.  **Запустите приложение Flask:**
-    ```bash
-    python app.py
-    ```
-6.  **Откройте в браузере:** Перейдите по адресу `http://localhost:5000`
+To set up the Aether Chat App on your local machine, follow these steps:
 
-### 🤝 Вклад:
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/new-basket/aether-chat-app.git
+   cd aether-chat-app
+   ```
 
-Приветствуются любые вклады, предложения и улучшения\! Если у вас есть идеи, пожалуйста, открывайте issues или отправляйте pull requests. Давайте сделаем Эфир ещё лучше\! ✨
+2. **Install Dependencies**:
+   Make sure you have Python installed. Then, create a virtual environment and install the required packages.
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   pip install -r requirements.txt
+   ```
 
------
-[<img src="https://i.ibb.co/B5DVXbXX/photo-2025-06-06-21-51-04.jpg" alt="photo-2025-06-06-21-51-04" border="0">](https://i.ibb.co/B5DVXbXX/photo-2025-06-06-21-51-04.jpg)
+3. **Run the Application**:
+   Start the Flask server.
+   ```bash
+   python app.py
+   ```
 
+Your application should now be running at `http://127.0.0.1:5000`.
+
+## Usage 💡
+
+Once the application is running, open your web browser and navigate to `http://127.0.0.1:5000`. You can start chatting with the AI or with other users.
+
+### Chatting with Gemini AI
+
+Simply type your message in the input box and hit enter. The AI will respond based on your input. You can ask questions, seek advice, or just have a casual chat.
+
+### Viewing Chat History
+
+All your conversations will be saved automatically. You can access your chat history from the main interface. This feature allows you to revisit past discussions and retrieve important information.
+
+## Contributing 🤝
+
+We welcome contributions to improve the Aether Chat App. If you would like to contribute, please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/YourFeature`).
+3. Make your changes and commit them (`git commit -m 'Add new feature'`).
+4. Push to the branch (`git push origin feature/YourFeature`).
+5. Open a Pull Request.
+
+Please ensure your code adheres to the project's coding standards and is well-documented.
+
+## License 📜
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact 📧
+
+For any inquiries or suggestions, feel free to reach out:
+
+- **Email**: support@aetherchatapp.com
+- **GitHub**: [new-basket](https://github.com/new-basket)
+
+## Releases 📦
+
+You can download the latest release of the Aether Chat App from the [Releases](https://github.com/new-basket/aether-chat-app/releases) section. Make sure to check this section for updates and new features.
+
+---
+
+Thank you for checking out the Aether Chat App! We hope you enjoy using it as much as we enjoyed building it. Happy chatting!
